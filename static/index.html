@@ -1,0 +1,1932 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PBX Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@500;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ── Reset & Variables ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #0a0c10;
+  --surf:     #10141c;
+  --surf2:    #161b26;
+  --surf3:    #1c2233;
+  --border:   #232a3a;
+  --border2:  #2d3650;
+  --text:     #d4ddf5;
+  --muted:    #5a6a8a;
+  --muted2:   #3a4a6a;
+  --ok:       #22d65a;
+  --warn:     #f0a500;
+  --danger:   #f03a3a;
+  --info:     #38b2f0;
+  --accent:   #4d7cfe;
+  --accent2:  #6d9cff;
+  --mono:     'JetBrains Mono', monospace;
+  --head:     'Syne', sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Layout ────────────────────────────────────────────────────────────── */
+.shell { display: flex; min-height: 100vh; }
+
+/* ── Sidebar ───────────────────────────────────────────────────────────── */
+.sidebar {
+  width: 200px;
+  background: var(--surf);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 100;
+}
+
+.logo {
+  padding: 22px 20px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo-mark {
+  font-family: var(--head);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--accent2);
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+
+.logo-mark span { color: var(--muted); font-weight: 500; }
+
+.logo-host {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav { padding: 10px 0; flex: 1; }
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border-left: 2px solid transparent;
+  transition: color .15s, background .15s, border-color .15s;
+  user-select: none;
+}
+
+.nav-item:hover { color: var(--text); background: var(--surf2); }
+
+.nav-item.active {
+  color: var(--accent2);
+  border-left-color: var(--accent);
+  background: rgba(77,124,254,.08);
+}
+
+.nav-icon { font-size: 14px; width: 18px; text-align: center; }
+
+.sidebar-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--muted2);
+  line-height: 1.8;
+}
+
+/* ── Main ──────────────────────────────────────────────────────────────── */
+.main { margin-left: 200px; flex: 1; display: flex; flex-direction: column; }
+
+/* ── Topbar ────────────────────────────────────────────────────────────── */
+.topbar {
+  background: var(--surf);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.topbar-left { display: flex; align-items: center; gap: 20px; }
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.status-led {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 6px var(--ok);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.status-led.off { background: var(--danger); box-shadow: 0 0 6px var(--danger); animation: none; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .5; }
+}
+
+.topbar-meta { font-size: 11px; color: var(--muted2); }
+
+.refresh-btn {
+  background: var(--surf2);
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: var(--mono);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color .15s, border-color .15s;
+}
+
+.refresh-btn:hover { color: var(--text); border-color: var(--accent); }
+
+.spin { animation: spin .8s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Content ───────────────────────────────────────────────────────────── */
+.content { padding: 24px; }
+
+.section { display: none; }
+.section.active { display: block; }
+
+/* ── Cards ─────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.card-title {
+  font-family: var(--head);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text);
+}
+
+.card-body { padding: 16px 18px; }
+
+/* ── Stat Grid ─────────────────────────────────────────────────────────── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.stat {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--accent);
+}
+
+.stat.ok::before  { background: var(--ok);   }
+.stat.bad::before { background: var(--danger); }
+.stat.inf::before { background: var(--info); }
+
+.stat-lbl {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.stat-val {
+  font-family: var(--head);
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text);
+}
+
+.stat.ok  .stat-val { color: var(--ok); }
+.stat.bad .stat-val { color: var(--danger); }
+.stat.inf .stat-val { color: var(--info); }
+
+.stat-sub { font-size: 10px; color: var(--muted); margin-top: 5px; }
+
+/* ── Table ─────────────────────────────────────────────────────────────── */
+table { width: 100%; border-collapse: collapse; }
+
+th {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+}
+
+td {
+  padding: 11px 14px;
+  border-bottom: 1px solid rgba(35,42,58,.6);
+  vertical-align: middle;
+}
+
+tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: var(--surf2); }
+
+/* ── Badges ────────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .03em;
+}
+
+.badge-ok      { background: rgba(34,214,90,.12); color: var(--ok);     border: 1px solid rgba(34,214,90,.25); }
+.badge-danger  { background: rgba(240,58,58,.12);  color: var(--danger); border: 1px solid rgba(240,58,58,.25); }
+.badge-warn    { background: rgba(240,165,0,.12);  color: var(--warn);   border: 1px solid rgba(240,165,0,.25); }
+.badge-muted   { background: rgba(90,106,138,.12); color: var(--muted);  border: 1px solid rgba(90,106,138,.25); }
+.badge-info    { background: rgba(56,178,240,.12); color: var(--info);   border: 1px solid rgba(56,178,240,.25); }
+
+.led {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 13px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: var(--mono);
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all .15s;
+}
+
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover { background: var(--accent2); }
+
+.btn-ghost  { background: var(--surf2); color: var(--muted); border-color: var(--border2); }
+.btn-ghost:hover { color: var(--text); border-color: var(--accent); }
+
+.btn-danger { background: rgba(240,58,58,.1); color: var(--danger); border-color: rgba(240,58,58,.3); }
+.btn-danger:hover { background: rgba(240,58,58,.2); }
+
+.btn-ok { background: rgba(34,214,90,.1); color: var(--ok); border-color: rgba(34,214,90,.3); }
+.btn-ok:hover { background: rgba(34,214,90,.2); }
+
+.btn-sm { padding: 4px 9px; font-size: 11px; }
+
+/* ── Forms ─────────────────────────────────────────────────────────────── */
+.input {
+  background: var(--surf2);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 8px 11px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--mono);
+  outline: none;
+  width: 100%;
+  transition: border-color .15s;
+}
+
+.input:focus { border-color: var(--accent); }
+.input::placeholder { color: var(--muted2); }
+
+select.input { cursor: pointer; }
+
+.form-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.fld { display: flex; flex-direction: column; gap: 5px; }
+.fld-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+
+/* ── Alert ─────────────────────────────────────────────────────────────── */
+.alert {
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-bottom: 14px;
+  animation: fadeIn .2s ease;
+}
+
+.alert-ok  { background: rgba(34,214,90,.1);  border: 1px solid rgba(34,214,90,.3);  color: var(--ok);   }
+.alert-err { background: rgba(240,58,58,.1);  border: 1px solid rgba(240,58,58,.3);  color: var(--danger); }
+.alert-wrn { background: rgba(240,165,0,.1);  border: 1px solid rgba(240,165,0,.3);  color: var(--warn); }
+
+@keyframes fadeIn { from { opacity:0; transform: translateY(-4px); } to { opacity:1; } }
+
+/* ── Channel bar ───────────────────────────────────────────────────────── */
+.ch-bar { display: flex; align-items: center; gap: 8px; }
+.ch-track { flex: 1; height: 4px; background: var(--surf3); border-radius: 2px; overflow: hidden; max-width: 100px; }
+.ch-fill  { height: 100%; border-radius: 2px; background: var(--accent); transition: width .3s; }
+.ch-fill.hi { background: var(--warn); }
+.ch-fill.top { background: var(--danger); }
+
+/* ── Channels expand ───────────────────────────────────────────────────── */
+.ch-row { background: var(--surf2); border-left: 2px solid var(--accent); }
+.ch-row td { padding: 10px 14px; }
+.ch-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+.ch-tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--info);
+  background: rgba(56,178,240,.08);
+  border: 1px solid rgba(56,178,240,.2);
+  border-radius: 4px;
+  padding: 2px 7px;
+}
+
+/* ── Fail2ban ──────────────────────────────────────────────────────────── */
+.wl-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.wl-tag {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ok);
+  background: rgba(34,214,90,.08);
+  border: 1px solid rgba(34,214,90,.2);
+  border-radius: 4px;
+  padding: 3px 9px;
+}
+
+/* ── Recordings ────────────────────────────────────────────────────────── */
+.rec-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(35,42,58,.5);
+  transition: background .1s;
+}
+.rec-item:last-child { border-bottom: none; }
+.rec-item:hover { background: var(--surf2); }
+.rec-info { font-size: 12px; }
+.rec-main { font-weight: 600; color: var(--text); }
+.rec-meta { color: var(--muted); font-size: 11px; margin-top: 3px; }
+
+/* ── Quality charts ────────────────────────────────────────────────────── */
+.chart-wrap { height: 220px; position: relative; }
+
+.period-tabs { display: flex; gap: 3px; background: var(--surf2); padding: 3px; border-radius: 6px; }
+.ptab {
+  padding: 4px 11px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: var(--mono);
+  cursor: pointer;
+  color: var(--muted);
+  border: none;
+  background: none;
+  transition: all .15s;
+}
+.ptab.active { background: var(--accent); color: #fff; }
+
+/* ── Error analysis ────────────────────────────────────────────────────── */
+.err-summary { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+
+.err-tile {
+  background: var(--surf2);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 10px 14px;
+  min-width: 120px;
+  cursor: default;
+}
+
+.err-tile.has-errors { border-color: rgba(240,58,58,.3); }
+.err-tile-lbl { font-size: 10px; color: var(--muted); margin-bottom: 5px; }
+.err-tile-val { font-family: var(--head); font-size: 22px; font-weight: 800; color: var(--muted2); }
+.err-tile.has-errors .err-tile-val { color: var(--danger); }
+
+.err-group { margin-bottom: 10px; }
+.err-group-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px;
+  background: var(--surf2);
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+.err-group-hd:hover { background: var(--surf3); }
+.err-cnt { font-size: 10px; background: rgba(240,58,58,.15); color: var(--danger); padding: 2px 7px; border-radius: 10px; }
+
+.err-lines {
+  display: none;
+  background: var(--bg);
+  border-radius: 5px;
+  padding: 8px 10px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.err-line {
+  font-size: 10px;
+  color: var(--muted);
+  padding: 1px 0;
+  border-bottom: 1px solid rgba(35,42,58,.4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.err-line:hover { white-space: normal; overflow: visible; color: var(--text); }
+.err-line:last-child { border-bottom: none; }
+
+/* ── Misc ──────────────────────────────────────────────────────────────── */
+.empty {
+  text-align: center;
+  padding: 36px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.divider {
+  font-size: 10px;
+  color: var(--muted2);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin: 12px 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+#alerts { margin-bottom: 4px; }
+
+/* ── Sub-tabs (внутри раздела) ─────────────────────────────────────────── */
+.sub-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 0 18px;
+}
+
+.stab {
+  padding: 10px 18px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all .15s;
+  letter-spacing: .04em;
+}
+
+.stab:hover { color: var(--text); }
+.stab.active { color: var(--accent2); border-bottom-color: var(--accent); }
+
+/* ── Contacts grouped ──────────────────────────────────────────────────── */
+.ep-group { border-bottom: 1px solid var(--border); }
+.ep-group:last-child { border-bottom: none; }
+
+.ep-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background .12s;
+  background: var(--surf2);
+}
+
+.ep-head:hover { background: var(--surf3); }
+
+.ep-name {
+  font-family: var(--head);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: .02em;
+}
+
+.ep-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ep-count {
+  font-size: 11px;
+  background: rgba(77,124,254,.15);
+  color: var(--accent2);
+  border: 1px solid rgba(77,124,254,.3);
+  border-radius: 12px;
+  padding: 2px 10px;
+  font-weight: 700;
+}
+
+.ep-count.avail {
+  background: rgba(34,214,90,.12);
+  color: var(--ok);
+  border-color: rgba(34,214,90,.3);
+}
+
+.ep-toggle { color: var(--muted); font-size: 11px; }
+
+.ep-body { display: none; }
+.ep-body.open { display: block; }
+
+/* Total contacts counter */
+.contacts-total {
+  font-family: var(--head);
+  font-size: 48px;
+  font-weight: 800;
+  color: var(--accent2);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.contacts-total-lbl {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+
+/* ── Inline group label editor ─────────────────────────────────────────── */
+.ep-label-wrap { display: inline-flex; align-items: center; }
+
+.ep-label-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--muted2);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 2px 5px;
+  outline: none;
+  width: 130px;
+  cursor: text;
+  transition: border-color .15s, color .15s, background .15s;
+  border-radius: 0;
+}
+
+/* В фокусе — выделяем активное редактирование */
+.ep-label-input:focus {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+  background: rgba(77,124,254,.06);
+  border-radius: 3px 3px 0 0;
+}
+
+/* Когда значение задано и не в фокусе — показываем акцентом */
+.ep-label-input.has-value:not(:focus) {
+  color: var(--accent2);
+  border-bottom-color: transparent;
+}
+
+.ep-label-input::placeholder {
+  color: var(--muted2);
+  font-size: 10px;
+  font-style: italic;
+}
+
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ── Sidebar ──────────────────────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-mark">PBX<span>/</span>Monitor</div>
+    <div class="logo-host" id="hostname">загрузка...</div>
+  </div>
+
+  <nav class="nav">
+    <div class="nav-item active" onclick="nav('trunks')">
+      <span class="nav-icon">◈</span> Транки
+    </div>
+    <div class="nav-item" onclick="nav('fail2ban')">
+      <span class="nav-icon">⬡</span> Fail2Ban
+    </div>
+    <div class="nav-item" onclick="nav('quality')">
+      <span class="nav-icon">◎</span> Качество
+    </div>
+    <div class="nav-item" onclick="nav('recordings')">
+      <span class="nav-icon">◉</span> Записи
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div id="asterisk-ver">Asterisk —</div>
+    <div id="uptime">uptime: —</div>
+    <div id="load">load: —</div>
+  </div>
+</aside>
+
+<!-- ── Main ─────────────────────────────────────────────────────────────── -->
+<div class="main">
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="status-pill">
+        <div class="status-led" id="led"></div>
+        <span id="conn-lbl">Подключено</span>
+      </div>
+      <div class="topbar-meta" id="last-refresh">—</div>
+    </div>
+    <button class="refresh-btn" onclick="doRefresh()">
+      <span id="ref-icon">↻</span> Обновить
+    </button>
+  </div>
+
+  <!-- Scrollable content -->
+  <div class="content">
+    <div id="alerts"></div>
+
+    <!-- ── TRUNKS ───────────────────────────────────────────────────── -->
+    <div class="section active" id="sec-trunks">
+
+      <!-- Суб-вкладки -->
+      <div class="card" style="padding:0;overflow:hidden;margin-bottom:18px">
+        <div class="sub-tabs">
+          <button class="stab active" id="stab-trunks"   onclick="showSubTab('trunks')">Статус транков</button>
+          <button class="stab"        id="stab-contacts" onclick="showSubTab('contacts')">
+            Операторы <span id="stab-contacts-cnt" style="margin-left:4px;font-size:10px;color:var(--muted)"></span>
+          </button>
+        </div>
+
+        <!-- ── Вкладка: Транки ── -->
+        <div id="subtab-trunks">
+          <div style="padding:16px 18px 0">
+            <div class="stat-grid" style="margin-bottom:16px">
+              <div class="stat">    <div class="stat-lbl">Транков</div><div class="stat-val" id="t-total">—</div></div>
+              <div class="stat ok"> <div class="stat-lbl">Зарег.</div> <div class="stat-val" id="t-reg">—</div></div>
+              <div class="stat bad"><div class="stat-lbl">Не зарег.</div><div class="stat-val" id="t-unreg">—</div></div>
+              <div class="stat inf"><div class="stat-lbl">Активных каналов</div><div class="stat-val" id="t-ch">—</div></div>
+            </div>
+          </div>
+          <div id="trunks-groups"></div>
+          <div style="padding:10px 18px;font-size:10px;color:var(--muted2)" id="trunks-ts"></div>
+        </div>
+
+        <!-- ── Вкладка: Операторы ── -->
+        <div id="subtab-contacts" style="display:none">
+          <!-- Шапка с общим счётчиком и управлением -->
+          <div style="padding:16px 18px;display:flex;align-items:flex-end;justify-content:space-between;border-bottom:1px solid var(--border)">
+            <div>
+              <div class="contacts-total" id="contacts-total">—</div>
+              <div class="contacts-total-lbl">операторов подключено</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <div style="font-size:11px;color:var(--muted)" id="contacts-updated"></div>
+              <!-- Поиск -->
+              <div class="fld">
+                <label class="fld-lbl">Поиск</label>
+                <input class="input" id="contacts-q" placeholder="код / IP / имя..."
+                  oninput="filterContacts(this.value)" style="width:180px">
+              </div>
+              <!-- Авто-обновление -->
+              <div class="fld">
+                <label class="fld-lbl">Авто-обновление</label>
+                <select class="input" id="contacts-interval" onchange="setContactsRefresh(this.value)" style="width:100px">
+                  <option value="0">Выкл</option>
+                  <option value="15">15 сек</option>
+                  <option value="30" selected>30 сек</option>
+                  <option value="60">1 мин</option>
+                </select>
+              </div>
+              <button class="btn btn-ghost" onclick="loadContacts()" style="align-self:flex-end">↻ Обновить</button>
+            </div>
+          </div>
+          <!-- Сгруппированный список -->
+          <div id="contacts-groups">
+            <div class="empty">Загрузка…</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── FAIL2BAN ─────────────────────────────────────────────────── -->
+    <div class="section" id="sec-fail2ban">
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Блокировки</span>
+          <select class="input" id="jail-sel" style="width:auto;font-size:11px" onchange="loadF2B()">
+            <option value="asterisk">asterisk</option>
+          </select>
+        </div>
+        <div class="card-body">
+
+          <!-- Добавить в вайтлист -->
+          <div class="divider">Добавить в whitelist</div>
+          <div style="margin-bottom:16px">
+            <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+              <div class="fld" style="flex:1;min-width:220px">
+                <label class="fld-lbl">IP адреса — один или несколько через пробел</label>
+                <textarea class="input" id="wl-ip" rows="2"
+                  placeholder="192.168.1.100&#10;10.0.0.1 10.0.0.2 10.0.0.3"
+                  style="resize:vertical;min-height:52px;line-height:1.4"></textarea>
+              </div>
+              <div class="fld">
+                <label class="fld-lbl">Добавить в</label>
+                <select class="input" id="wl-jail" style="width:auto">
+                  <option value="asterisk">asterisk (один jail)</option>
+                  <option value="DEFAULT">DEFAULT (все jail сразу)</option>
+                </select>
+              </div>
+              <button class="btn btn-ok" onclick="doWhitelist()" style="align-self:flex-end">
+                ✓ Добавить
+              </button>
+            </div>
+            <div id="wl-result" style="margin-top:8px;font-size:11px;color:var(--muted)"></div>
+          </div>
+
+          <!-- Текущий whitelist — два уровня -->
+          <div class="divider">
+            Whitelist — DEFAULT
+            <span style="color:var(--muted2);font-weight:400;font-size:10px;margin-left:6px">
+              применяется ко всем jail сразу
+            </span>
+          </div>
+          <div class="wl-tags" id="wl-tags-default" style="margin-bottom:12px">—</div>
+
+          <div class="divider" id="wl-jail-label">
+            Whitelist — <span id="wl-jail-name">asterisk</span>
+            <span style="color:var(--muted2);font-weight:400;font-size:10px;margin-left:6px">
+              только для этого jail
+            </span>
+          </div>
+          <div class="wl-tags" id="wl-tags-jail" style="margin-bottom:16px">—</div>
+
+          <!-- Забаненные -->
+          <div class="divider">Заблокированные IP (<span id="banned-cnt">0</span>)</div>
+          <div id="banned-list"><div class="empty">Нет заблокированных IP</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── QUALITY ───────────────────────────────────────────────────── -->
+    <div class="section" id="sec-quality">
+
+      <!-- Period selector (shared between hero and chart) -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <span style="font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">Период анализа</span>
+        <div class=class="period-tabs" id="qp-tabs">
+            <button class="ptab" onclick="setQP('15m',this)">15м</button>
+            <button class="ptab" onclick="setQP('30m',this)">30м</button>
+            <button class="ptab active" onclick="setQP('1h',this)">1ч</button>
+            <button class="ptab" onclick="setQP('6h',this)">6ч</button>
+            <button class="ptab" onclick="setQP('24h',this)">24ч</button>
+          </div>
+      </div>
+
+      <!-- Hero + secondary stats row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:18px">
+
+        <!-- HERO: Answer Rate -->
+        <div class="card" id="q-hero-card" style="grid-column:1;padding:20px 22px;border-left-width:4px;position:relative;overflow:hidden">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Дозвон</div>
+          <div id="q-rate-big" style="font-family:var(--head);font-size:52px;font-weight:800;line-height:1;color:var(--text)">—</div>
+          <!-- Trend arrow -->
+          <div id="q-trend" style="font-size:13px;font-weight:600;margin-top:6px"></div>
+          <div id="q-hero-sub" style="font-size:11px;color:var(--muted);margin-top:4px"></div>
+          <!-- Thresholds legend -->
+          <div style="position:absolute;bottom:12px;right:14px;font-size:9px;color:var(--muted2);text-align:right;line-height:1.8">
+            <div>≥70% <span style="color:var(--ok)">●</span> норма</div>
+            <div>40-70% <span style="color:var(--warn)">●</span> следи</div>
+            <div>&lt;40% <span style="color:var(--danger)">●</span> ротация</div>
+          </div>
+        </div>
+
+        <!-- Нет ответа -->
+        <div class="stat" style="grid-column:2">
+          <div class="stat-lbl">Нет ответа</div>
+          <div class="stat-val" style="color:var(--warn)" id="q-na">—</div>
+          <div id="q-na-pct" style="font-size:20px;font-weight:700;color:var(--warn);margin-top:2px"></div>
+          <div class="stat-sub" id="q-na-sub"></div>
+        </div>
+
+        <!-- Ошибки -->
+        <div class="stat bad" style="grid-column:3">
+          <div class="stat-lbl">Ошибки / Failed</div>
+          <div class="stat-val" id="q-fail">—</div>
+          <div id="q-fail-pct" style="font-size:20px;font-weight:700;color:var(--danger);margin-top:2px"></div>
+          <div class="stat-sub" id="q-fail-sub"></div>
+        </div>
+
+        <!-- Средняя длительность -->
+        <div class="stat" style="grid-column:4;border-top-color:var(--info)">
+          <div class="stat-lbl">Средняя длит. разг.</div>
+          <div class="stat-val" style="font-size:24px;color:var(--info)" id="q-avg-dur">—</div>
+          <div class="stat-sub" id="q-total-sub"></div>
+        </div>
+      </div>
+
+      <!-- Rotation hint -->
+      <div id="rotation-hint" style="display:none;margin-bottom:14px;padding:12px 16px;
+           border-radius:8px;font-size:13px">
+        <strong id="rotation-strong"></strong>
+        <span id="rotation-reason" style="color:var(--text-muted);margin-left:8px"></span>
+      </div>
+
+      <!-- Main chart: dual-axis (volume bars + answer rate line) -->
+      <div class="card" style="margin-bottom:18px">
+        <div class="card-head">
+          <span class="card-title">График звонков</span>
+          <div class="period-tabs">
+            <button class="ptab" onclick="setTP('15m',this)">15м</button>
+            <button class="ptab" onclick="setTP('30m',this)">30м</button>
+            <button class="ptab" onclick="setTP('1h',this)">1ч</button>
+            <button class="ptab active" onclick="setTP('24h',this)">24ч</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:8px">
+            Столбики = % дозвона за период · Цвет: зелёный ≥70% · жёлтый 40-70% · красный &lt;40% · Пунктир = порог ротации 60% · Линия = объём звонков
+          </div>
+          <div class="chart-wrap" style="height:240px"><canvas id="q-chart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Peak hours heatmap -->
+      <div class="card" style="margin-bottom:18px">
+        <div class="card-head">
+          <span class="card-title">Активность по часам суток</span>
+          <span style="font-size:11px;color:var(--muted)">за последние 7 дней</span>
+        </div>
+        <div class="card-body">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:8px">
+            Столбики = объём · Линия = % дозвона — помогает планировать ротацию по времени суток
+          </div>
+          <div class="chart-wrap" style="height:180px"><canvas id="q-hourly-chart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Trunk performance ranking -->
+      <div class="card" style="margin-bottom:18px">
+        <div class="card-head">
+          <span class="card-title">Рейтинг транков по дозвону</span>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="font-size:10px;color:var(--muted)">Красные = менять в кабинете Ростелекома</span>
+            <div class="period-tabs">
+              <button class="ptab active" onclick="setTrunkPerfPeriod('1h',this)">1ч</button>
+              <button class="ptab" onclick="setTrunkPerfPeriod('6h',this)">6ч</button>
+              <button class="ptab" onclick="setTrunkPerfPeriod('24h',this)">24ч</button>
+            </div>
+          </div>
+        </div>
+        <!-- Dialplan pool stats -->
+        <div style="display:flex;gap:16px;padding:10px 18px;background:var(--surf2);border-bottom:1px solid var(--border);font-size:11px;flex-wrap:wrap">
+          <span style="color:var(--muted)">Пул randcool за час:</span>
+          <span>Звонков: <strong id="dp-calls">—</strong></span>
+          <span>Найден транк: <strong id="dp-found" style="color:var(--ok)">—</strong></span>
+          <span>Все заняты: <strong id="dp-busy" style="color:var(--danger)">—</strong></span>
+          <span>Ср. пропусков/звонок: <strong id="dp-skips" style="color:var(--warn)">—</strong></span>
+        </div>
+        <div style="overflow-x:auto">
+          <table id="trunk-perf-table">
+            <thead>
+              <tr>
+                <th>Транк</th>
+                <th>Дозвон %</th>
+                <th style="width:120px">Визуализация</th>
+                <th>Звонков</th>
+                <th>Нет ответа</th>
+                <th>Failed</th>
+                <th>Ср. длит.</th>
+              </tr>
+            </thead>
+            <tbody id="trunk-perf-tbody">
+              <tr><td colspan="7" class="empty">Загрузка…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Error log analysis -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Анализ лога Asterisk</span>
+          <select class="input" id="err-hours" style="width:auto;font-size:11px" onchange="loadErrors()">
+            <option value="1">1 час</option>
+            <option value="6">6 часов</option>
+            <option value="24">24 часа</option>
+          </select>
+        </div>
+        <div class="card-body">
+          <div class="err-summary" id="err-summary"></div>
+          <div id="err-details"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── RECORDINGS ────────────────────────────────────────────────── -->
+    <div class="section" id="sec-recordings">
+      <div class="card">
+        <div class="card-head"><span class="card-title">Поиск записей</span></div>
+        <div class="card-body">
+          <div class="form-row" style="margin-bottom:14px">
+            <div class="fld" style="flex:1;min-width:160px">
+              <label class="fld-lbl">Номер телефона</label>
+              <input class="input" id="r-phone" placeholder="79001234567">
+            </div>
+            <div class="fld">
+              <label class="fld-lbl">С</label>
+              <input type="date" class="input" id="r-from" style="width:140px">
+            </div>
+            <div class="fld">
+              <label class="fld-lbl">По</label>
+              <input type="date" class="input" id="r-to" style="width:140px">
+            </div>
+            <button class="btn btn-primary" onclick="doSearch()">Найти</button>
+          </div>
+          <div id="r-bar" style="display:none;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <span id="r-cnt" style="font-size:11px;color:var(--muted)"></span>
+            <button class="btn btn-ghost btn-sm" id="r-dl-all" onclick="dlAll()" style="display:none">
+              ⬇ Скачать все (.zip)
+            </button>
+          </div>
+          <div id="r-results"><div class="empty">Введите номер для поиска</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /shell -->
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /shell -->
+
+<script>
+'use strict';
+/* ── State ─────────────────────────────────────────────────────────────── */
+let currentSection = 'trunks';
+let qPeriod = '1h';
+let tPeriod = '24h';
+let chart   = null;
+let refreshTimer = null;
+let lastPhone = '', lastFrom = '', lastTo = '';
+
+/* ── Navigation ─────────────────────────────────────────────────────────── */
+let hourlyChart = null;
+
+// Цвет в зависимости от % дозвона
+// Пороги дозвона: ≥70% норма, 40-70% следить, <40% ротация
+const THRESHOLDS = { good: 70, warn: 40 };
+
+function rateColor(rate) {
+  if (rate >= THRESHOLDS.good) return 'var(--ok)';
+  if (rate >= THRESHOLDS.warn) return 'var(--warn)';
+  return 'var(--danger)';
+}
+
+// Chart.js instance для пиковых часов
+
+function fmtDuration(sec) {
+  if (!sec || sec <= 0) return '—';
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return m > 0 ? `${m}м ${s}с` : `${s}с`;
+}
+
+async function loadHourly() {
+  try {
+    const d  = await api('/api/quality/hourly');
+    const hl = d.hourly || [];
+
+    // Метки: "00:00", "01:00" ... "23:00"
+    const labels = hl.map(h => String(h.hour).padStart(2,'0') + ':00');
+    const totals  = hl.map(h => h.total);
+    const rates   = hl.map(h => h.rate);
+
+    const ctx = document.getElementById('q-hourly-chart').getContext('2d');
+    if (hourlyChart) hourlyChart.destroy();
+
+    // Цветовая кодировка столбиков по % дозвона каждого часа
+    const barColors = hl.map(h => {
+      if (!h.total) return 'rgba(35,42,58,.3)';
+      if (h.rate >= 70) return 'rgba(34,214,90,.55)';
+      if (h.rate >= 40) return 'rgba(240,165,0,.55)';
+      return 'rgba(240,58,58,.55)';
+    });
+
+    hourlyChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            type: 'bar',
+            label: 'Звонков/час',
+            data: totals,
+            backgroundColor: barColors,
+            borderRadius: 3,
+            yAxisID: 'y',
+          },
+          {
+            type: 'line',
+            label: '% дозвона',
+            data: rates,
+            borderColor: 'rgba(77,124,254,.9)',
+            borderWidth: 2,
+            pointRadius: 2,
+            yAxisID: 'y1',
+            tension: 0.3,
+            fill: false,
+            spanGaps: true,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            labels: { color: '#5a6a8a', font: { size: 11, family: "'JetBrains Mono'" }, boxWidth: 12 }
+          },
+          tooltip: {
+            callbacks: {
+              label(ctx) {
+                return ctx.datasetIndex === 0
+                  ? ` Звонков: ${ctx.parsed.y}`
+                  : ` Дозвон: ${ctx.parsed.y}%`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { color: '#5a6a8a', font: { size: 9 } }, grid: { color: 'rgba(35,42,58,.4)' } },
+          y: {
+            position: 'left',
+            ticks: { color: '#5a6a8a', font: { size: 9 } },
+            grid: { color: 'rgba(35,42,58,.4)' }
+          },
+          y1: {
+            type: 'linear',
+            position: 'right',
+            min: 0, max: 100,
+            grid: { drawOnChartArea: false },
+            ticks: { color: 'rgba(77,124,254,.8)', font: { size: 9 }, callback: v => v + '%' }
+          }
+        }
+      }
+    });
+  } catch (e) { console.error('loadHourly:', e); }
+}
+
+function nav(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.onclick?.toString().includes(name)) n.classList.add('active');
+  });
+  currentSection = name;
+  clearInterval(refreshTimer);
+  doRefresh();
+  if (name === 'trunks') refreshTimer = setInterval(() => { loadTrunks(); loadContacts(); }, 30000);
+}
+
+function doRefresh() {
+  const icon = document.getElementById('ref-icon');
+  icon.classList.add('spin');
+  setTimeout(() => icon.classList.remove('spin'), 700);
+  switch (currentSection) {
+    case 'trunks':     loadTrunks(); break;
+    case 'fail2ban':   loadF2B();     break;
+    case 'quality':    loadQuality(); loadErrors(); break;  // loadQuality вызывает loadTimeline и loadHourly
+    case 'recordings': if (lastPhone) doSearch(); break;
+  }
+  document.getElementById('last-refresh').textContent =
+    'обновлено ' + new Date().toLocaleTimeString('ru-RU');
+}
+
+/* ── Server info ─────────────────────────────────────────────────────────── */
+async function loadServerInfo() {
+  try {
+    const d = await api('/api/server/info');
+    document.getElementById('hostname').textContent = d.hostname;
+    document.getElementById('asterisk-ver').textContent = d.asterisk_version?.split(' ').slice(0,3).join(' ') || '—';
+    document.getElementById('uptime').textContent = 'up: ' + d.uptime;
+    document.getElementById('load').textContent   = 'load: ' + (d.load || []).join(' ');
+    document.getElementById('led').className = 'status-led';
+    document.getElementById('conn-lbl').textContent = 'Подключено';
+  } catch {
+    document.getElementById('led').className = 'status-led off';
+    document.getElementById('conn-lbl').textContent = 'Нет связи';
+  }
+}
+
+/* ── Trunks ──────────────────────────────────────────────────────────────── */
+async function loadTrunks() {
+  try {
+    const d = await api('/api/trunks');
+    const s = d.summary;
+    document.getElementById('t-total').textContent = s.total;
+    document.getElementById('t-reg').textContent   = s.registered;
+    document.getElementById('t-unreg').textContent = s.unreachable;
+    document.getElementById('t-ch').textContent    = s.channels;
+    document.getElementById('trunks-ts').textContent = new Date().toLocaleTimeString('ru-RU');
+
+    const container = document.getElementById('trunks-groups');
+
+    if (!d.trunks.length) {
+      container.innerHTML = '<div class="empty">Транки не найдены</div>';
+      return;
+    }
+
+    // Разбиваем транки на группы по статусу
+    const groups = {};
+    d.trunks.forEach(t => {
+      const grp = t.status.includes('Registered') ? 'Registered' : t.status;
+      if (!groups[grp]) groups[grp] = [];
+      groups[grp].push(t);
+    });
+
+    // Registered — первыми, остальные по алфавиту
+    const order = ['Registered', ...Object.keys(groups).filter(k => k !== 'Registered').sort()];
+
+    container.innerHTML = order.filter(g => groups[g]).map(grp => {
+      const trunks  = groups[grp];
+      const isReg   = grp === 'Registered';
+      const grpId   = 'grp-' + grp.replace(/\W/g, '_');
+      const color   = isReg ? 'var(--ok)' : 'var(--danger)';
+      const bgColor = isReg ? 'rgba(34,214,90,.06)' : 'rgba(240,58,58,.06)';
+
+      const rows = trunks.map(t => {
+        const badge = isReg
+          ? '<span class="badge badge-ok"><span class="led"></span>Registered</span>'
+          : `<span class="badge badge-danger"><span class="led"></span>${t.status}</span>`;
+
+        const pct = Math.min(100, (t.active_channels / 20) * 100);
+        const fillCls = pct > 80 ? 'top' : pct > 55 ? 'hi' : '';
+        const chBar = `<div class="ch-bar">
+          <span style="min-width:24px">${t.active_channels}</span>
+          <div class="ch-track"><div class="ch-fill ${fillCls}" style="width:${pct}%"></div></div>
+        </div>`;
+
+        const expandBtn = t.active_channels
+          ? `<button class="btn btn-ghost btn-sm" onclick="toggleCh('${t.name}',this)">▾ каналы</button>`
+          : '';
+
+        return `<tr>
+          <td><strong>${t.name}</strong></td>
+          <td>${badge}</td>
+          <td style="color:var(--muted);font-size:11px">${t.server || '—'}</td>
+          <td>${chBar}</td>
+          <td>${expandBtn}</td>
+        </tr>
+        <tr class="ch-row" id="ch-${t.name}" style="display:none">
+          <td colspan="5">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:5px">АКТИВНЫЕ КАНАЛЫ</div>
+            <div class="ch-tags">${t.channels.map(c =>
+              `<span class="ch-tag">${c.channel}${c.callerid ? ' · ' + c.callerid : ''}</span>`
+            ).join('') || '<span style="color:var(--muted2)">нет данных</span>'}</div>
+          </td>
+        </tr>`;
+      }).join('');
+
+      return `
+        <!-- Группа: ${grp} -->
+        <div style="border-bottom:1px solid var(--border)">
+          <div onclick="toggleGroup('${grpId}')"
+            style="display:flex;align-items:center;justify-content:space-between;
+                   padding:10px 14px;cursor:pointer;background:${bgColor};
+                   border-left:3px solid ${color}">
+            <span style="font-size:11px;font-weight:700;color:${color};letter-spacing:.06em">
+              ${grp.toUpperCase()} (${trunks.length})
+            </span>
+            <span id="${grpId}-icon" style="color:var(--muted);font-size:12px">${isReg ? '▴' : '▾'}</span>
+          </div>
+          <div id="${grpId}" style="display:${isReg ? 'block' : 'none'}">
+            <table>
+              <thead>
+                <tr><th>Имя</th><th>Статус</th><th>Сервер</th><th>Каналы</th><th></th></tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </div>`;
+    }).join('');
+
+  } catch (e) {
+    document.getElementById('trunks-groups').innerHTML =
+      `<div class="empty" style="color:var(--danger)">Ошибка: ${e.message}</div>`;
+  }
+}
+
+function toggleGroup(id) {
+  const el   = document.getElementById(id);
+  const icon = document.getElementById(id + '-icon');
+  const open = el.style.display !== 'none';
+  el.style.display  = open ? 'none' : 'block';
+  icon.textContent  = open ? '▾' : '▴';
+}
+
+function toggleCh(name, btn) {
+  const row = document.getElementById('ch-' + name);
+  const hidden = row.style.display === 'none';
+  row.style.display = hidden ? 'table-row' : 'none';
+  btn.textContent = hidden ? '▴ скрыть' : '▾ каналы';
+}
+
+/* ── Sub-tab switching ───────────────────────────────────────────────────── */
+function showSubTab(name) {
+  document.getElementById('subtab-trunks').style.display   = name === 'trunks'   ? 'block' : 'none';
+  document.getElementById('subtab-contacts').style.display = name === 'contacts' ? 'block' : 'none';
+  document.getElementById('stab-trunks').classList.toggle('active',   name === 'trunks');
+  document.getElementById('stab-contacts').classList.toggle('active', name === 'contacts');
+  if (name === 'contacts') loadContacts();
+}
+
+/* ── Contacts — grouped by endpoint ─────────────────────────────────────── */
+let allContacts      = [];
+let contactsTimer    = null;
+let expandedGroups   = new Set(); // запоминаем какие группы раскрыты
+
+async function loadContacts() {
+  try {
+    const d = await api('/api/contacts');
+    allContacts = d.contacts;
+
+    // Счётчики — только по числовым группам (операторам), без транков
+    const numericOnly = allContacts.filter(c => /^\d+$/.test(c.endpoint));
+    const avail = numericOnly.filter(c => c.status === 'Avail').length;
+    document.getElementById('contacts-total').textContent = avail;
+    document.getElementById('stab-contacts-cnt').textContent = '(' + avail + ')';
+    document.getElementById('contacts-updated').textContent =
+      'обновлено ' + new Date().toLocaleTimeString('ru-RU');
+
+    const q = document.getElementById('contacts-q')?.value || '';
+    renderContactGroups(q ? allContacts.filter(c => matchContact(c, q)) : allContacts);
+  } catch (e) {
+    document.getElementById('contacts-groups').innerHTML =
+      `<div class="empty" style="color:var(--danger)">Ошибка: ${e.message}</div>`;
+  }
+}
+
+function matchContact(c, q) {
+  const ql = q.toLowerCase();
+  return c.endpoint.toLowerCase().includes(ql)
+      || c.aor.toLowerCase().includes(ql)
+      || c.ip.toLowerCase().includes(ql)
+      || c.uri.toLowerCase().includes(ql);
+}
+
+function filterContacts(q) {
+  const list = q ? allContacts.filter(c => matchContact(c, q)) : allContacts;
+  renderContactGroups(list);
+}
+
+function renderContactGroups(list) {
+  const container = document.getElementById('contacts-groups');
+
+  if (!list.length) {
+    container.innerHTML = '<div class="empty">Нет совпадений</div>';
+    return;
+  }
+
+  // Группируем по endpoint
+  const groups = {};
+  list.forEach(c => {
+    const key = c.endpoint || '(unknown)';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(c);
+  });
+
+  // Показываем ТОЛЬКО числовые группы — это операторы.
+  // Текстовые имена (abuasi, ageyur...) — это транки Ростелекома,
+  // они уже отображаются в соседней суб-вкладке "Статус транков".
+  const sorted = Object.entries(groups)
+    .filter(([ep]) => /^\d+$/.test(ep))
+    .sort(([, av], [, bv]) => bv.length - av.length);
+
+  if (!sorted.length) {
+    container.innerHTML = '<div class="empty">Числовые группы не найдены</div>';
+    return;
+  }
+
+  container.innerHTML = sorted.map(([ep, contacts]) => {
+    const availCount = contacts.filter(c => c.status === 'Avail').length;
+
+    // Группа раскрыта только если пользователь явно кликнул — по умолчанию закрыто
+    const isOpen = expandedGroups.has(ep);
+    const grpId  = 'epg-' + ep;
+
+    // Сохранённое пользователем название группы из localStorage
+    const savedLabel = localStorage.getItem('ep-label-' + ep) || '';
+    const hasLabel   = savedLabel.length > 0;
+
+    const rows = contacts.map(c => {
+      const badge = c.status === 'Avail'
+        ? '<span class="badge badge-ok" style="font-size:10px"><span class="led"></span>Avail</span>'
+        : `<span class="badge badge-muted" style="font-size:10px">${c.status}</span>`;
+      return `<tr>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--info)">${c.ip || '—'}</td>
+        <td style="color:var(--muted);font-size:11px">${c.aor}</td>
+        <td>${badge}</td>
+        <td style="color:var(--muted);font-size:11px">${c.rtt} мс</td>
+      </tr>`;
+    }).join('');
+
+    return `<div class="ep-group">
+      <div class="ep-head" onclick="toggleEpGroup('${grpId}', '${ep}')">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="ep-name">${ep}</span>
+          <!-- Инлайн-редактор названия группы.
+               onclick stopPropagation — клик по полю не сворачивает группу.
+               Сохраняем в localStorage при blur или Enter. -->
+          <span class="ep-label-wrap" onclick="event.stopPropagation()">
+            <input
+              type="text"
+              class="ep-label-input ${hasLabel ? 'has-value' : ''}"
+              id="label-${ep}"
+              value="${savedLabel}"
+              placeholder="+ имя группы"
+              maxlength="30"
+              onblur="saveEpLabel('${ep}', this)"
+              onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}"
+            >
+          </span>
+        </div>
+        <div class="ep-badge">
+          <span class="ep-count avail">${availCount} подкл.</span>
+          <span class="ep-count">${contacts.length} всего</span>
+          <span class="ep-toggle" id="${grpId}-icon">${isOpen ? '▴' : '▾'}</span>
+        </div>
+      </div>
+      <div class="ep-body ${isOpen ? 'open' : ''}" id="${grpId}">
+        <table>
+          <thead>
+            <tr><th>IP адрес</th><th>AOR</th><th>Статус</th><th>RTT</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleEpGroup(grpId, ep) {
+  const body = document.getElementById(grpId);
+  const icon = document.getElementById(grpId + '-icon');
+  const open = body.classList.toggle('open');
+  icon.textContent = open ? '▴' : '▾';
+  if (open) expandedGroups.add(ep); else expandedGroups.delete(ep);
+}
+
+// Сохраняем название группы в localStorage.
+// Используем класс has-value чтобы CSS знал показывать акцентный цвет.
+function saveEpLabel(ep, input) {
+  const val = input.value.trim();
+  if (val) {
+    localStorage.setItem('ep-label-' + ep, val);
+    input.classList.add('has-value');
+  } else {
+    localStorage.removeItem('ep-label-' + ep);
+    input.classList.remove('has-value');
+  }
+}
+
+function setContactsRefresh(seconds) {
+  clearInterval(contactsTimer);
+  contactsTimer = null;
+  const s = parseInt(seconds);
+  if (s > 0) contactsTimer = setInterval(loadContacts, s * 1000);
+}
+
+/* ── Fail2ban ────────────────────────────────────────────────────────────── */
+async function loadF2B() {
+  // Подгружаем список jail-ов
+  try {
+    const j = await api('/api/fail2ban/jails');
+    const sel  = document.getElementById('jail-sel');
+    const sel2 = document.getElementById('wl-jail');
+    const cur  = sel.value;
+    const opts = j.jails.map(n => `<option value="${n}" ${n===cur?'selected':''}>${n}</option>`).join('');
+    sel.innerHTML = opts;
+    // wl-jail всегда имеет DEFAULT как первый вариант + все jail-ы
+    const wlOpts = `<option value="DEFAULT">DEFAULT (все jail сразу)</option>` +
+      j.jails.map(n => `<option value="${n}">${n} (один jail)</option>`).join('');
+    sel2.innerHTML = wlOpts;
+  } catch {}
+
+  const jail = document.getElementById('jail-sel').value;
+  try {
+    const d = await api(`/api/fail2ban/banned?jail=${jail}`);
+    document.getElementById('banned-cnt').textContent = d.count;
+
+    // Whitelist
+           // Whitelist — два уровня: DEFAULT (все jail) и конкретный jail
+        const wlD = document.getElementById('wl-tags-default');
+        const wlJ = document.getElementById('wl-tags-jail');
+        const jailNameEl = document.getElementById('wl-jail-name');
+        if (jailNameEl) jailNameEl.textContent = jail;
+
+        const renderTags = (el, ips) => {
+          if (!el) return;
+          el.innerHTML = ips?.length
+            ? ips.map(ip => `<span class="wl-tag">${ip}</span>`).join('')
+            : '<span style="color:var(--muted2)">пусто</span>';
+        };
+        renderTags(wlD, d.whitelist?.default);
+        renderTags(wlJ, d.whitelist?.jail);
+    // Banned
+    const bl = document.getElementById('banned-list');
+    if (!d.banned?.length) {
+      bl.innerHTML = '<div class="empty">Нет заблокированных IP</div>';
+      return;
+    }
+    bl.innerHTML = `<table>
+      <thead><tr><th>IP адрес</th><th>Действия</th></tr></thead>
+      <tbody>${d.banned.map(ip => `<tr>
+        <td><span style="font-family:var(--mono)">${ip}</span></td>
+        <td style="display:flex;gap:6px">
+          <button class="btn btn-danger btn-sm" onclick="doUnban('${ip}',false)">Разбанить</button>
+          <button class="btn btn-ok btn-sm"     onclick="doUnban('${ip}',true)">✓ + вайтлист</button>
+        </td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  } catch (e) {
+    showAlert('err', 'Ошибка fail2ban: ' + e.message);
+  }
+}
+
+async function doUnban(ip, whitelist) {
+  const jail = document.getElementById('jail-sel').value;
+  try {
+    const d = await api('/api/fail2ban/unban', 'POST', { ip, jail, add_to_whitelist: whitelist });
+    showAlert('ok', `IP ${ip} разбанен${whitelist ? ' и добавлен в whitelist' : ''}`);
+    loadF2B();
+  } catch (e) { showAlert('err', e.message); }
+}
+
+async function doWhitelist() {
+  const raw  = document.getElementById('wl-ip').value.trim();
+  const jail = document.getElementById('wl-jail').value;
+  const result = document.getElementById('wl-result');
+  if (!raw) return;
+
+  // Разбиваем по пробелам, запятым, переносам строк
+  const ips = raw.split(/[\s,;\n]+/).map(s => s.trim()).filter(Boolean);
+  if (!ips.length) return;
+
+  result.textContent = `Добавляем ${ips.length} IP...`;
+  try {
+    const d = await api('/api/fail2ban/whitelist', 'POST', { ip: ips.join(' '), jail });
+    if (d.success) {
+      const msg = d.count > 1
+        ? `✓ Добавлено ${d.count} IP в whitelist (${jail})`
+        : `✓ ${d.ips[0]} добавлен в whitelist (${jail})`;
+      showAlert('ok', msg);
+      result.textContent = '';
+      document.getElementById('wl-ip').value = '';
+      loadF2B();
+    }
+  } catch (e) {
+    showAlert('err', e.message);
+    result.textContent = '';
+  }
+}
+async function loadQuality() {
+  try {
+    const d = await api(`/api/quality/stats?period=${qPeriod}`);
+    const s = d.stats;
+    document.getElementById('q-total').textContent  = s.total;
+    document.getElementById('q-ans').textContent    = s.answered;
+    document.getElementById('q-ans-r').textContent  = s.answer_rate + '% отвечено';
+    document.getElementById('q-na').textContent     = s.no_answer;
+    document.getElementById('q-fail').textContent   = s.failed + s.busy;
+    document.getElementById('q-fail-r').textContent = s.fail_rate + '% ошибок';
+
+    // Красим «ошибки» по порогу
+    const failEl = document.getElementById('q-fail');
+    failEl.style.color = s.fail_rate > 30 ? 'var(--danger)' :
+                         s.fail_rate > 15 ? 'var(--warn)' : 'var(--text)';
+
+    // Рекомендация по ротации номера на основе % нет ответа
+    const hint   = document.getElementById('rotation-hint');
+    const reason = document.getElementById('rotation-reason');
+    const naRate = s.total > 0 ? Math.round(s.no_answer / s.total * 100) : 0;
+
+    const periodLabels = {
+      '15m':'за 15 минут', '30m':'за 30 минут', '1h':'за 1 час',
+      '6h':'за 6 часов', '24h':'за 24 часа', '7d':'за 7 дней'
+    };
+    const pLabel = periodLabels[qPeriod] || '';
+
+    if (s.total >= 10 && naRate >= ROTATION_THRESHOLDS.critical) {
+      hint.style.display = 'block';
+      hint.style.borderColor = 'rgba(240,58,58,.5)';
+      hint.style.background  = 'rgba(240,58,58,.08)';
+      hint.querySelector('strong').style.color = 'var(--danger)';
+      hint.querySelector('strong').textContent = '🔴 Срочно меняйте номер';
+      reason.textContent = `${naRate}% звонков без ответа ${pLabel} — номер заблокирован как спам`;
+    } else if (s.total >= 10 && naRate >= ROTATION_THRESHOLDS.warn) {
+      hint.style.display = 'block';
+      hint.style.borderColor = 'rgba(240,165,0,.4)';
+      hint.style.background  = 'rgba(240,165,0,.08)';
+      hint.querySelector('strong').style.color = 'var(--warn)';
+      hint.querySelector('strong').textContent = '⚠ Рекомендуется ротация';
+      reason.textContent = `${naRate}% звонков без ответа ${pLabel} — номер теряет репутацию`;
+    } else {
+      hint.style.display = 'none';
+    }
+
+  } catch (e) { console.error(e); }
+
+  loadTimeline();
+}
+
+async function loadTimeline() {
+  try {
+    const d  = await api(`/api/quality/timeline?period=${tPeriod}`);
+    const tl = d.timeline || [];
+    const labels = tl.map(r => r.period);
+
+    // Считаем % для каждого периода — 100% стековые столбики
+    const pctOf = (r, val) => {
+      const tot = r.answered + r.no_answer + (r.failed||0) + (r.busy||0);
+      return tot > 0 ? Math.round(val / tot * 100) : 0;
+    };
+    const answerPct = tl.map(r => pctOf(r, r.answered));
+    const naPct     = tl.map(r => pctOf(r, r.no_answer));
+    const failPct   = tl.map(r => pctOf(r, (r.failed||0)+(r.busy||0)));
+    const volumes   = tl.map(r => r.answered + r.no_answer + (r.failed||0) + (r.busy||0));
+
+    // Цвет столбика дозвона по пороговым значениям
+    const barColors = answerPct.map(p =>
+      p >= 70 ? 'rgba(34,214,90,.85)' :
+      p >= 40 ? 'rgba(240,165,0,.85)' :
+                'rgba(240,58,58,.85)'
+    );
+
+    const ctx = document.getElementById('q-chart').getContext('2d');
+    if (chart) chart.destroy();
+
+    chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            type: 'bar', label: 'Дозвон %',
+            data: answerPct, backgroundColor: barColors,
+            borderRadius: 2, stack: 'pct', yAxisID: 'y',
+          },
+          {
+            type: 'bar', label: 'Нет ответа %',
+            data: naPct, backgroundColor: 'rgba(240,165,0,.5)',
+            stack: 'pct', yAxisID: 'y',
+          },
+          {
+            type: 'bar', label: 'Ошибки %',
+            data: failPct, backgroundColor: 'rgba(240,58,58,.5)',
+            stack: 'pct', yAxisID: 'y',
+          },
+          {
+            // Пороговая линия прямо на % оси — чётко видно что ниже нормы
+            type: 'line', label: 'Порог 60%',
+            data: tl.map(() => 60),
+            borderColor: 'rgba(255,255,255,.4)', borderWidth: 1.5,
+            borderDash: [5, 4], pointRadius: 0,
+            yAxisID: 'y', fill: false, tension: 0,
+          },
+          {
+            // Объём — на правой оси (контекст значимости)
+            type: 'line', label: 'Всего звонков',
+            data: volumes,
+            borderColor: 'rgba(77,124,254,.7)',
+            backgroundColor: 'rgba(77,124,254,.05)',
+            borderWidth: 2, pointRadius: 2, pointHoverRadius: 5,
+            yAxisID: 'y1', tension: 0.3, fill: true, spanGaps: true,
+          },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            labels: { color: '#5a6a8a', font: { size: 11, family: "'JetBrains Mono'" }, boxWidth: 12 }
+          },
+          tooltip: {
+            callbacks: {
+              title: items => {
+                const idx = items[0].dataIndex;
+                return `${labels[idx]}  ·  дозвон ${answerPct[idx]}%`;
+              },
+              label: ctx => {
+                const i = ctx.dataIndex, di = ctx.datasetIndex;
+                const r = tl[i];
+                if (di === 0) return ` Дозвон: ${answerPct[i]}%  (${r.answered} шт)`;
+                if (di === 1) return ` Нет ответа: ${naPct[i]}%  (${r.no_answer} шт)`;
+                if (di === 2) return ` Ошибки: ${failPct[i]}%`;
+                if (di === 3) return ` Порог: 60%`;
+                if (di === 4) return ` Всего звонков: ${volumes[i]}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            stacked: true,
+            ticks: { color: '#5a6a8a', font: { size: 9 }, maxRotation: 45 },
+            grid:  { color: 'rgba(35,42,58,.4)' }
+          },
+          y: {
+            stacked: true, position: 'left', min: 0, max: 100,
+            ticks: { color: '#5a6a8a', font: { size: 10 }, callback: v => v + '%', stepSize: 20 },
+            grid:  { color: 'rgba(35,42,58,.5)' },
+          },
+          y1: {
+            type: 'linear', position: 'right',
+            grid: { drawOnChartArea: false },
+            ticks: { color: 'rgba(77,124,254,.55)', font: { size: 9 } },
+            title: { display: true, text: 'звонков', color: 'rgba(77,124,254,.45)', font: { size: 9 } }
+          }
+        }
+      }
+    });
+  } catch (e) { console.error('loadTimeline:', e); }
+}
+
+
+async function loadTrunkPerformance() {
+  const tbody = document.getElementById('trunk-perf-tbody');
+  try {
+    // Грузим параллельно: рейтинг транков и статистику диалплана
+    const [tp, dp] = await Promise.all([
+      api(`/api/quality/trunk_performance?period=${trunkPerfPeriod}`),
+      api('/api/quality/dialplan?hours=1'),
+    ]);
+
+    // Обновляем шапку dialplan stats
+    document.getElementById('dp-calls').textContent = dp.calls_started || 0;
+    document.getElementById('dp-found').textContent = dp.trunk_found || 0;
+    document.getElementById('dp-busy').textContent  = dp.all_busy   || 0;
+    document.getElementById('dp-skips').textContent = dp.avg_skips_per_call || 0;
+
+    if (!tp.trunks?.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty">Нет данных за период</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = tp.trunks.map(t => {
+      const rate   = parseFloat(t.answer_rate) || 0;
+      const color  = rate >= 70 ? 'var(--ok)' : rate >= 40 ? 'var(--warn)' : 'var(--danger)';
+      const barBg  = rate >= 70 ? 'rgba(34,214,90,.15)' : rate >= 40 ? 'rgba(240,165,0,.15)' : 'rgba(240,58,58,.1)';
+      const rowBg  = rate < 40 ? 'rgba(240,58,58,.04)' : '';
+      const dur    = t.avg_dur ? fmtDuration(parseInt(t.avg_dur)) : '—';
+
+      return `<tr style="background:${rowBg}">
+        <td><strong style="font-family:var(--mono)">${t.trunk || '—'}</strong></td>
+        <td style="color:${color};font-weight:700;font-size:15px">${rate}%</td>
+        <td>
+          <div style="height:8px;background:var(--surf3);border-radius:4px;overflow:hidden">
+            <div style="width:${rate}%;height:100%;background:${color};border-radius:4px;transition:width .3s"></div>
+          </div>
+        </td>
+        <td style="color:var(--muted)">${parseInt(t.total)}</td>
+        <td style="color:var(--warn)">${parseInt(t.no_answer)}</td>
+        <td style="color:var(--danger)">${parseInt(t.failed)}</td>
+        <td style="color:var(--muted);font-size:11px">${dur}</td>
+      </tr>`;
+    }).join('');
+
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty" style="color:var(--danger)">Ошибка: ${e.message}</td></tr>`;
+  }
+}
+
+function setTrunkPerfPeriod(p, btn) {
+  trunkPerfPeriod = p;
+  btn.closest('.period-tabs').querySelectorAll('.ptab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadTrunkPerformance();
+}
+
+async function loadErrors() {
+  const hours = document.getElementById('err-hours').value;
+  try {
+    const d = await api(`/api/quality/errors?hours=${hours}&lines=5000`);
+
+    // Tiles
+    document.getElementById('err-summary').innerHTML =
+      Object.entries(d.summary).map(([k, cnt]) => `
+        <div class="err-tile ${cnt > 0 ? 'has-errors' : ''}">
+          <div class="err-tile-lbl">${d.labels[k] || k}</div>
+          <div class="err-tile-val">${cnt}</div>
+        </div>`).join('');
+
+    // Details
+    const entries = Object.entries(d.errors).filter(([, v]) => v.length);
+    document.getElementById('err-details').innerHTML = entries.length ? entries.map(([k, lines]) => `
+      <div class="err-group">
+        <div class="err-group-hd" onclick="toggleErrGroup('eg-${k}')">
+          <span>${d.labels[k] || k}</span>
+          <span class="err-cnt">${lines.length}</span>
+        </div>
+        <div class="err-lines" id="eg-${k}">
+          ${lines.map(l => `<div class="err-line">${esc(l)}</div>`).join('')}
+        </div>
+      </div>`).join('')
+      : '<div style="color:var(--ok);font-size:12px">✓ Ошибок не найдено</div>';
+  } catch (e) { console.error(e); }
+}
+
+function toggleErrGroup(id) {
+  const el = document.getElementById(id);
+  el.style.display = el.style.display === 'block' ? 'none' : 'block';
+}
+
+function setQP(p, btn) {
+  qPeriod = p;
+  document.querySelectorAll('#qp-tabs .ptab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadQuality();
+}
+
+function setTP(p, btn) {
+  tPeriod = p;
+  btn.closest('.period-tabs').querySelectorAll('.ptab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  // Для мелких периодов синхронизируем и сводку
+  if (['15m','30m','1h'].includes(p) && qPeriod !== p) {
+    qPeriod = p;
+    document.querySelectorAll('#qp-tabs .ptab').forEach(b => {
+      b.classList.toggle('active', b.textContent.trim() === {
+        '15m':'15м', '30m':'30м', '1h':'1ч'
+      }[p]);
+    });
+    loadQuality();
+    return; // loadQuality вызовет loadTimeline сам
+  }
+  loadTimeline();
+}
+
+/* ── Recordings ──────────────────────────────────────────────────────────── */
+async function doSearch() {
+  const phone = document.getElementById('r-phone').value.trim();
+  const from  = document.getElementById('r-from').value;
+  const to    = document.getElementById('r-to').value;
+  if (!phone) { showAlert('wrn', 'Введите номер телефона'); return; }
+
+  lastPhone = phone; lastFrom = from; lastTo = to;
+  document.getElementById('r-results').innerHTML = '<div class="empty">Поиск…</div>';
+
+  try {
+    const params = new URLSearchParams({ phone });
+    if (from) params.append('date_from', from);
+    if (to)   params.append('date_to', to);
+    const d = await api(`/api/recordings/search?${params}`);
+
+    document.getElementById('r-bar').style.display = 'flex';
+    document.getElementById('r-cnt').textContent = `Найдено: ${d.count}`;
+    document.getElementById('r-dl-all').style.display = d.count > 0 ? 'inline-flex' : 'none';
+
+    if (!d.count) {
+      document.getElementById('r-results').innerHTML = '<div class="empty">Записи не найдены</div>';
+      return;
+    }
+
+    document.getElementById('r-results').innerHTML = d.recordings.map(r => {
+      const dispColor = r.disposition === 'ANSWERED' ? 'var(--ok)' :
+                        r.disposition === 'BUSY'     ? 'var(--warn)' : 'var(--danger)';
+      const dlBtn = r.file_exists
+        ? `<a href="/api/recordings/download/${r.uniqueid}" class="btn btn-primary btn-sm" download>⬇ wav</a>`
+        : `<span style="color:var(--muted2);font-size:11px">нет файла</span>`;
+      return `<div class="rec-item">
+        <div class="rec-info">
+          <div class="rec-main">${r.src} → ${r.dst}</div>
+          <div class="rec-meta">
+            ${r.calldate} · ${fmtDur(r.billsec)} ·
+            <span style="color:${dispColor}">${r.disposition}</span>
+          </div>
+        </div>
+        ${dlBtn}
+      </div>`;
+    }).join('');
+  } catch (e) { showAlert('err', 'Ошибка поиска: ' + e.message); }
+}
+
+function dlAll() {
+  const p = new URLSearchParams({ phone: lastPhone, date_from: lastFrom, date_to: lastTo });
+  window.open('/api/recordings/download-bulk?' + p, '_blank');
+}
+
+function fmtDur(s) {
+  if (!s) return '0с';
+  const m = Math.floor(s / 60), sec = s % 60;
+  return m ? `${m}м ${sec}с` : `${sec}с`;
+}
+
+/* ── Utils ───────────────────────────────────────────────────────────────── */
+async function api(url, method = 'GET', body = null) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(url, opts);
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({ detail: r.statusText }));
+    throw new Error(e.detail || r.statusText);
+  }
+  return r.json();
+}
+
+function showAlert(type, msg) {
+  const el = document.createElement('div');
+  el.className = `alert alert-${type}`;
+  el.textContent = msg;
+  document.getElementById('alerts').prepend(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ── Init ────────────────────────────────────────────────────────────────── */
+// Даты по умолчанию для поиска записей
+const today = new Date().toISOString().slice(0, 10);
+const month = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+document.getElementById('r-from').value = month;
+document.getElementById('r-to').value   = today;
+
+loadServerInfo();
+loadTrunks();
+setInterval(loadServerInfo, 60000);
+setContactsRefresh(30);
+refreshTimer = setInterval(loadTrunks, 30000);
+
+</script>
+</body>
+</html>
